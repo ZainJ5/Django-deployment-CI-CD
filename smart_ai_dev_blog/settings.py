@@ -82,7 +82,8 @@ DATABASES = {
 ALLOWED_HOSTS = [
     '.vercel.app', 
     'localhost',    
-    '127.0.0.1'    
+    '127.0.0.1',
+    '.render.com'    
 ]
 
 # Password validation

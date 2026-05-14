@@ -1,1 +1,56 @@
 name: "Django CI/CD pipeline"
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build-test-deploy:
+     runs-on: ubuntu-latest
+
+     steps:
+       - name: Get the code
+         uses: actions/checkout@v4
+
+       - name: Set up python environment
+         uses: actions/setup-python@v5 # Pinned to v5
+         with: 
+           python-version: '3.10' # Quoted string is safer for YAML parsing
+
+       - name: Install Dependencies for Testing
+         run: pip install -r requirements.txt
+
+       - name: Run Tests
+         run: python manage.py test
+       
+       - name: Deploy code to server
+         uses: appleboy/scp-action@v1
+         with: 
+           host: ${{ secrets.HOST }}
+           username: ${{ secrets.USERNAME }}
+           key: ${{ secrets.KEY }}
+           source: "." # Copies all files from the repo
+           target: /var/www/html/django_project # Grouping into a project folder is cleaner
+
+       - name: Execute Server Commands
+         uses: appleboy/ssh-action@v1
+         with:
+           host: ${{ secrets.HOST }}
+           username: ${{ secrets.USERNAME }}
+           key: ${{ secrets.KEY }}
+           port: ${{ secrets.PORT }}
+           script: |
+             cd /var/www/html/django_project
+             
+             # Best practice: Use a virtual environment on the server
+             python3 -m venv venv
+             source venv/bin/activate
+             
+             # Install dependencies on the server
+             pip install -r requirements.txt
+             
+             # Run migrations and collect static files for Nginx
+             python manage.py migrate
+             python manage.py collectstatic --noinput
+             
+             # Restart the production server daemon (Assuming Gunicorn/Systemd)
+             # sudo systemctl restart gunicorn
